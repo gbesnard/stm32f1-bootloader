@@ -68,8 +68,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	uint8_t pData[16];
-	uint8_t toto[] = "toto";
-	uint32_t cnt;
+	uint8_t toto[] = "pong";
 	HAL_StatusTypeDef ret;
 
   /* USER CODE END 1 */
@@ -81,7 +80,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  cnt = 0;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -103,13 +101,8 @@ int main(void)
 
 	while (1)
 	{
-		if (cnt > 10000)
-		{
-			cnt = 0;
-			ret = HAL_UART_Receive(&huart1, pData, sizeof(pData), 1000);
-			ret = HAL_UART_Transmit(&huart1, toto, sizeof(toto), 1000);
-		}
-		cnt++;
+		ret = HAL_UART_Receive(&huart1, pData, sizeof(pData), 5000);
+		ret = HAL_UART_Transmit(&huart1, toto, sizeof(toto), 1000);
 
     /* USER CODE END WHILE */
 
