@@ -42,6 +42,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
+uint8_t data_recv = 0u;
 
 /* USER CODE BEGIN PV */
 
@@ -57,6 +58,13 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	data_recv = 1u;
+ }
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+}
+
 
 /* USER CODE END 0 */
 
@@ -70,6 +78,7 @@ int main(void)
 	uint8_t pData[16];
 	uint8_t toto[] = "pong";
 	HAL_StatusTypeDef ret;
+	HAL_StatusTypeDef ret_reg;
 
   /* USER CODE END 1 */
   
@@ -98,11 +107,19 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	ret_reg = HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_COMPLETE_CB_ID, HAL_UART_RxCpltCallback);
+	ret_reg = HAL_UART_RegisterCallback(&huart1, HAL_UART_ERROR_CB_ID, HAL_UART_ErrorCallback);
 
-	while (1)
-	{
-		ret = HAL_UART_Receive(&huart1, pData, sizeof(pData), 5000);
-		ret = HAL_UART_Transmit(&huart1, toto, sizeof(toto), 1000);
+	while (1) {
+		if (data_recv) {
+			ret = HAL_UART_Transmit(&huart1, pData, sizeof(pData), 1000);
+			data_recv = 0u;
+		}
+		// Wait for 16 bytes
+		// Can be 1234567890123456
+		// Disable LF and set baud rate to 4800 in cutecom
+		ret = HAL_UART_Receive_IT(&huart1, pData, sizeof(pData));
+		HAL_Delay(1000);
 
     /* USER CODE END WHILE */
 
@@ -161,7 +178,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 4800;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
