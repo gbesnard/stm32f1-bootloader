@@ -68,7 +68,7 @@ sudo screen /dev/ttyUSBO 115200
 
 ## COM (with board)
 Use cutecom (easier to set up than with tty)
-Baud rate		115200
+Baud rate		4800
 Word length		8
 Parity			None
 Stop Bits		1
@@ -92,15 +92,3 @@ green   TX      --------------- RX  USART1  PA_10   A10
 ## Hardware
 - stm32f103c8t6 board
 - st-link v2
-
-# TODO
-- HAL_DELAY
-- UART Interrupt
-- UART lost byte (no buffer ?), timeout (linked to sys_tick error)
-- Understand clock tree
-- Small bootloader
-- RTOS
-- Write own uart driver
-- simpler makefile ? (useless ?), standalone dbg ?
-- adc joystick, potard
-- learn more... and more (talk to another spi device ?)
