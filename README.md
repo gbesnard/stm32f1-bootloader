@@ -1,22 +1,15 @@
-# INFO
+# MCU information
 STM32F103C8T6 ARM cortex-m3
 
+## General
 ```
-Flash	: 	128kB
-RAM		: 	20kB
-HCLK	: 	76MHz
+Flash	:	128kB
+RAM		:	20kB
+HCLK	:	76MHz
 ```
 
-# DEBUG
-Enable in the .ioc file in SYS (Serial Wire Debug swd).
-
-# Flash release firmware
-Project properties -> C/C++ Build -> MCU Post build outputs -> convert to binary file
-
-`st-flash write foobar.bin 0x8000000`
-
-# Memory
-`stlink-gui`, `st-flash erase`
+## Memory
+### Mapping
 
 ```
 +---------------+ 0x1FFF F800
@@ -42,7 +35,13 @@ Project properties -> C/C++ Build -> MCU Post build outputs -> convert to binary
 +---------------+ 0x0000 0000
 ```
 
-# Boot
+### Useful commands
+```
+stlink-gui
+st-flash erase
+```
+
+## Boot
 At startup, boot pins are used to select one of three boot options:
 - Boot from User Flash (BOOT1 == X && BOOT0 == 0)
 - Boot from System Memory (BOOT1 == 0 && BOOT0 == 1)
@@ -51,12 +50,26 @@ At startup, boot pins are used to select one of three boot options:
 The boot loader is located in System Memory. It is used to reprogram the Flash memory by using USART1 (this is what is used by arduino IDE, when we're not using the programmer).
 For further details please refer to AN2606.
 
+# Tools
+## Software
+- stm32cubeIDE
+- stlink-gui
+- st-flash
+- cutecom
+
+## Hardware
+- stm32f103c8t6 board
+- st-link v2
+- USB to TTL serial cable
+
 # Clock
-- Increase HCLK to 76MHz (max).
+- HCLCK increased to maximum of 76MHz.
 - Use the HSE (High Speed External) crystal oscillator.
 
 # UART
-## Test (only need the computer)
+The board simply echo a 16 byte message received from its UART RX to its UART TX.
+
+## Test (only need a computer)
 Shortcut usb to ttl serial cable with a jumper cable.
 
 Configure tty
@@ -85,25 +98,24 @@ HW Flow Ctrl 	Disable
 USB to TTL serial cable
 
 ```
-red     5V      ---------------
-black   GND     --------------- GND                 G
-white   RX      --------------- TX  USART1  PA_9    A9
-green   TX      --------------- RX  USART1  PA_10   A10
+RED     5V      ---------------
+BLACK   GND     --------------- GND                 G
+WHITE   RX      --------------- TX  USART1  PA_9    A9
+GREEN   TX      --------------- RX  USART1  PA_10   A10
 ```
 
 # LED
+LED is blinking for a short period after receiving data from UART.
+
 ```
 LED		------------	GPIO 	PC_13
 ```
 
-# Tools
-## Software
-- stm32cubeIDE
-- stlink-gui
-- st-flash
-- cutecom
+# Usage
+## Debug
+Enable in the .ioc file in SYS (Serial Wire Debug swd).
 
-## Hardware
-- stm32f103c8t6 board
-- st-link v2
-- USB to TTL serial cable
+## Flash release firmware
+Project properties -> C/C++ Build -> MCU Post build outputs -> convert to binary file
+
+`st-flash write foobar.bin 0x8000000`
