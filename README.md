@@ -72,7 +72,7 @@ sudo screen /dev/ttyUSBO 115200
 
 ## COM (with board)
 Use cutecom (easier to set up than with tty)
-Baud rate		4800
+Baud rate		115200
 Word length		8
 Parity			None
 Stop Bits		1
