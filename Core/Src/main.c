@@ -44,7 +44,12 @@
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-uint8_t data_recv = 0u;
+uint8_t data_recv 		= 0u;
+
+uint8_t blinking		= 0u;
+uint32_t blink_tick		= 0u;
+uint32_t blink_timeout	= 0u;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,6 +69,28 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 }
 
+void init_blinking() {
+	if (!blinking) {
+		blinking = 1u;
+		blink_tick = HAL_GetTick();
+		blink_timeout = HAL_GetTick();
+	}
+}
+
+void blinking_process() {
+	if (blinking) {
+		if (HAL_GetTick() - blink_timeout > 3000) {
+			blinking = 0u;
+		}
+		if (HAL_GetTick() - blink_tick > 100) {
+			HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+			blink_tick = HAL_GetTick();
+		}
+	}
+	else {
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+	}
+}
 
 /* USER CODE END 0 */
 
@@ -75,9 +102,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	uint8_t pData[16];
-	uint8_t toto[] = "pong";
 	HAL_StatusTypeDef ret;
-	HAL_StatusTypeDef ret_reg;
 
   /* USER CODE END 1 */
   
@@ -102,24 +127,39 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  	// LED switched off
+  	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+
+	ret = HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_COMPLETE_CB_ID, HAL_UART_RxCpltCallback);
+	if (ret == HAL_ERROR) Error_Handler();
+
+	ret = HAL_UART_RegisterCallback(&huart1, HAL_UART_ERROR_CB_ID, HAL_UART_ErrorCallback);
+	if (ret == HAL_ERROR) Error_Handler();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	ret_reg = HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_COMPLETE_CB_ID, HAL_UART_RxCpltCallback);
-	ret_reg = HAL_UART_RegisterCallback(&huart1, HAL_UART_ERROR_CB_ID, HAL_UART_ErrorCallback);
 
 	while (1) {
+		// RX
 		if (data_recv) {
-			ret = HAL_UART_Transmit(&huart1, pData, sizeof(pData), 1000);
+			// TX Echo
 			data_recv = 0u;
-		}
-		// Wait for 16 bytes
-		// Can be 1234567890123456
-		// Disable LF and set baud rate to 4800 in cutecom
-		ret = HAL_UART_Receive_IT(&huart1, pData, sizeof(pData));
-		HAL_Delay(1000);
+			ret = HAL_UART_Transmit(&huart1, pData, sizeof(pData), 1000);
+			if (ret == HAL_ERROR) Error_Handler();
 
+			// LED will blink for a short time after data rx
+			init_blinking();
+		}
+
+		// Handle blinking state
+		blinking_process();
+
+		// Wait for exactly 16 bytes
+		ret = HAL_UART_Receive_IT(&huart1, pData, sizeof(pData));
+		if (ret == HAL_ERROR) Error_Handler();
+
+		HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -203,10 +243,22 @@ static void MX_USART1_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 }
 
@@ -222,7 +274,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-
+	while(1) {}
   /* USER CODE END Error_Handler_Debug */
 }
 

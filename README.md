@@ -52,6 +52,10 @@ At startup, boot pins are used to select one of three boot options:
 The boot loader is located in System Memory. It is used to reprogram the Flash memory by using USART1 (i think this is what is used by arduino IDE, when we're not using the programmer).
 For further details please refer to AN2606.
 
+# Clock
+- Increase HCLK to 76MHz (max).
+- Use the HSE (High Speed External) crystal oscillator.
+
 # UART
 ## Test (only need the computer)
 Shortcut usb to ttl serial cable with a jumper cable.
