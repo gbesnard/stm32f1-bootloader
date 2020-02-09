@@ -41,9 +41,9 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
+uint8_t *p_data;
 uint8_t data_recv 		= 0u;
 
 uint8_t blinking		= 0u;
@@ -55,18 +55,15 @@ uint32_t blink_timeout	= 0u;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+void uart_rx_cplt_callback(uint8_t *rx_data) {
+	p_data = rx_data;
 	data_recv = 1u;
- }
-
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 }
 
 void init_blinking() {
@@ -101,8 +98,7 @@ void blinking_process() {
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	uint8_t pData[16];
-	HAL_StatusTypeDef ret;
+	unsigned char hello_data[16] = "echo machine";
 
   /* USER CODE END 1 */
   
@@ -124,29 +120,28 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+	custom_uart_driver_init();
+	set_rx_cplt_callback(uart_rx_cplt_callback);
+
+	custom_uart_driver_tx(hello_data, sizeof(hello_data));
 
   	// LED switched off
   	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 
-	ret = HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_COMPLETE_CB_ID, HAL_UART_RxCpltCallback);
-	if (ret == HAL_ERROR) Error_Handler();
-
-	ret = HAL_UART_RegisterCallback(&huart1, HAL_UART_ERROR_CB_ID, HAL_UART_ErrorCallback);
-	if (ret == HAL_ERROR) Error_Handler();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
 	while (1) {
+		//custom_uart_driver_rx();
+
 		// RX
 		if (data_recv) {
 			// TX Echo
 			data_recv = 0u;
-			ret = HAL_UART_Transmit(&huart1, pData, sizeof(pData), 1000);
-			if (ret == HAL_ERROR) Error_Handler();
+			custom_uart_driver_tx(p_data, 16);
 
 			// LED will blink for a short time after data rx
 			init_blinking();
@@ -154,10 +149,6 @@ int main(void)
 
 		// Handle blinking state
 		blinking_process();
-
-		// Wait for exactly 16 bytes
-		ret = HAL_UART_Receive_IT(&huart1, pData, sizeof(pData));
-		if (ret == HAL_ERROR) Error_Handler();
 
 		HAL_Delay(100);
     /* USER CODE END WHILE */
@@ -202,38 +193,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief USART1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART1_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART1_Init 0 */
-
-  /* USER CODE END USART1_Init 0 */
-
-  /* USER CODE BEGIN USART1_Init 1 */
-
-  /* USER CODE END USART1_Init 1 */
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART1_Init 2 */
-  /* USER CODE END USART1_Init 2 */
-
 }
 
 /**

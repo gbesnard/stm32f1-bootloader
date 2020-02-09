@@ -3,9 +3,9 @@ STM32F103C8T6 ARM cortex-m3
 
 ## General
 ```
-Flash	:	128kB
-RAM		:	20kB
-HCLK	:	76MHz
+Flash: 128kB
+RAM  : 20kB
+HCLK : 76MHz
 ```
 
 ## Memory
@@ -87,28 +87,33 @@ sudo screen /dev/ttyUSBO 115200
 ## COM (with board)
 Use cutecom (easier to set up than with tty)
 ```
-Baud rate		115200
-Word length		8
-Parity			None
-Stop Bits		1
-HW Flow Ctrl 	Disable
+Baud rate       115200
+Word length     8
+Parity          None
+Stop Bits       1
+HW Flow Ctrl    Disable
 ```
 
 ## Pinout
 USB to TTL serial cable
 
 ```
-RED     5V      ---------------
-BLACK   GND     --------------- GND                 G
-WHITE   RX      --------------- TX  USART1  PA_9    A9
-GREEN   TX      --------------- RX  USART1  PA_10   A10
+RED     5V    ---------------
+BLACK   GND   ---------------  GND                 G
+WHITE   RX    ---------------  TX  USART1  PA_9    A9
+GREEN   TX    ---------------  RX  USART1  PA_10   A10
 ```
+
+## Driver
+Use a dummy custom driver instead of the `stm32f1xx_hal_uart.c`.
+For now it uses interrupt but not DMA. The configuration is hardcoded, there is no timeout management and there is no error checks.
+It also still use the HAL for the GPIO initialization (todo).
 
 # LED
 LED is blinking for a short period after receiving data from UART.
 
 ```
-LED		------------	GPIO 	PC_13
+LED  ------------  GPIO  PC_13
 ```
 
 # Usage
@@ -118,4 +123,4 @@ Enable in the .ioc file in SYS (Serial Wire Debug swd).
 ## Flash release firmware
 Project properties -> C/C++ Build -> MCU Post build outputs -> convert to binary file
 
-`st-flash write foobar.bin 0x8000000`
+`st-flash write stm32f103c8t6.bin 0x8000000`
