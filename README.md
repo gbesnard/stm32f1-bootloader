@@ -15,23 +15,29 @@ HCLK : 76MHz
 +---------------+ 0x1FFF F800
 |               |
 | System memory |
-| (bootloader)  |
+|(ST bootloader)|
+|               |
 +---------------+ 0x1FFF F000
 |               |
+|   Reserved    |
 |               |
-|   reserved    |
++---------------+ 0x0801 FFFF -+
+|               |              |
+|  Application  |              |
+|               |              | Flash
++---------------+ 0x0800 4000  | memory
 |               |
+|    Custom     |              | 
+|  bootloader   |              |
 |               |
-+---------------+ 0x0801 FFFF
++---------------+ 0x0800 0000 -+
 |               |
-| Flash memory  |
-|               |
-+---------------+ 0x0800 0000
-| aliased to    |
+| Aliased to    |
 | flash or      |
 | system memory |
 | depending on  |
 | BOOT pins     |
+|               |
 +---------------+ 0x0000 0000
 ```
 
@@ -47,8 +53,8 @@ At startup, boot pins are used to select one of three boot options:
 - Boot from System Memory (BOOT1 == 0 && BOOT0 == 1)
 - Boot from embedded SRAM (BOOT1 == 1 && BOOT0 == 1)
 
-The boot loader is located in System Memory. It is used to reprogram the Flash memory by using USART1 (this is what is used by arduino IDE, when we're not using the programmer).
-For further details please refer to AN2606.
+The ST boot loader is located in System Memory. It is used to reprogram the Flash memory by using USART1.
+Our own boot loader is ... TODO
 
 # Tools
 ## Software
@@ -69,7 +75,7 @@ For further details please refer to AN2606.
 # UART
 The board simply echo a 16 byte message received from its UART RX to its UART TX.
 
-## Test (only need a computer)
+## Test TTL serial cable (if using a Linux computer)
 Shortcut usb to ttl serial cable with a jumper cable.
 
 Configure tty
@@ -85,7 +91,7 @@ sudo screen /dev/ttyUSBO 115200
 ```
 
 ## COM (with board)
-Use cutecom (easier to set up than with tty)
+Use cutecom (easier to set up than with a tty)
 ```
 Baud rate       115200
 Word length     8
@@ -105,13 +111,13 @@ GREEN   TX    ---------------  RX  USART1  PA_10   A10
 ```
 
 ## Driver
-Use a dummy custom driver instead of the `stm32f1xx_hal_uart.c` (cubeMX is not used).
+Use a dummy custom driver instead of the `stm32f1xx_hal_uart.c` (cubeMX generated code not used).
 
 - Uses interrupt but not DMA. 
-- Hardcoded configuration
-- No timeout management
-- No error checks
-- Still use the HAL for the GPIO initialization (todo).
+- Hardcoded configuration.
+- No timeout management.
+- No error checks.
+- Still use the HAL for the GPIO initialization (TODO).
 
 # LED
 LED is blinking for a short period after receiving data from UART.
@@ -124,7 +130,12 @@ LED  ------------  GPIO  PC_13
 ## Debug
 Enable in the .ioc file in SYS (Serial Wire Debug swd).
 
-## Flash release firmware
+## Debug bootloader and application
+Run -> Debug Configurations -> Startup -> Add 
+
+Download both binaries and load both their symbols for the debugger to be aware of application symbols after the jump.
+
+## Flash release firmware (without custom bootloader)
 Project properties -> C/C++ Build -> MCU Post build outputs -> convert to binary file
 
 `st-flash write stm32f103c8t6.bin 0x8000000`
