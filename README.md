@@ -105,9 +105,13 @@ GREEN   TX    ---------------  RX  USART1  PA_10   A10
 ```
 
 ## Driver
-Use a dummy custom driver instead of the `stm32f1xx_hal_uart.c`.
-For now it uses interrupt but not DMA. The configuration is hardcoded, there is no timeout management and there is no error checks.
-It also still use the HAL for the GPIO initialization (todo).
+Use a dummy custom driver instead of the `stm32f1xx_hal_uart.c` (cubeMX is not used).
+
+- Uses interrupt but not DMA. 
+- Hardcoded configuration
+- No timeout management
+- No error checks
+- Still use the HAL for the GPIO initialization (todo).
 
 # LED
 LED is blinking for a short period after receiving data from UART.

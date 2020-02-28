@@ -1,4 +1,4 @@
-Debug/
-Release/
-
-stm32f103c8t6 Debug (1).launch
+*/Debug/
+*/Release/
+*.settings
+*.launch
