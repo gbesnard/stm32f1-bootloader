@@ -1,3 +1,8 @@
+# Project
+STM32 project for learning purposes.
+- UART driver
+- Bootloader
+
 # MCU information
 STM32F103C8T6 ARM cortex-m3
 
@@ -12,33 +17,33 @@ HCLK : 76MHz
 ### Mapping
 
 ```
-+---------------+ 0x1FFF F800
-|               |
-| System memory |
-|(ST bootloader)|
-|               |
-+---------------+ 0x1FFF F000
-|               |
-|   Reserved    |
-|               |
-+---------------+ 0x0801 FFFF -+
-|               |              |
-|  Application  |              |
-|               |              | Flash
-+---------------+ 0x0800 4000  | memory
-|               |
-|    Custom     |              | 
-|  bootloader   |              |
-|               |
-+---------------+ 0x0800 0000 -+
-|               |
-| Aliased to    |
-| flash or      |
-| system memory |
-| depending on  |
-| BOOT pins     |
-|               |
-+---------------+ 0x0000 0000
++----------------+ 0x1FFF F800
+|                 |
+|  System memory  |
+| (ST bootloader) |
+|                 |
++-----------------+ 0x1FFF F000
+|                 |
+|    Reserved     |
+|                 |
++-----------------+ 0x0801 FFFF -+
+|                 |              |
+|   Application   |              |
+|                 |              | Flash
++-----------------+ 0x0800 4000  | memory
+|                 |              |
+|     Custom      |              | 
+|   bootloader    |              |
+|                 |              |
++-----------------+ 0x0800 0000 -+
+|                 |
+|  Aliased to     |
+|  flash or       |
+|  system memory  |
+|  depending on   |
+|  BOOT pins      |
+|                 |
++-----------------+ 0x0000 0000
 ```
 
 ### Useful commands
@@ -53,8 +58,9 @@ At startup, boot pins are used to select one of three boot options:
 - Boot from System Memory (BOOT1 == 0 && BOOT0 == 1)
 - Boot from embedded SRAM (BOOT1 == 1 && BOOT0 == 1)
 
-The ST boot loader is located in System Memory. It is used to reprogram the Flash memory by using USART1.
-Our own boot loader is ... TODO
+The ST bootloader is located in System Memory. It is used to reprogram the Flash memory by using USART1.
+
+Custom bootloader is located at the start of the flash memory.
 
 # Tools
 ## Software
@@ -73,7 +79,7 @@ Our own boot loader is ... TODO
 - Use the HSE (High Speed External) crystal oscillator.
 
 # UART
-The board simply echo a 16 byte message received from its UART RX to its UART TX.
+The board simply echoes a 16 byte message received from its UART RX to its UART TX.
 
 ## Test TTL serial cable (if using a Linux computer)
 Shortcut usb to ttl serial cable with a jumper cable.
