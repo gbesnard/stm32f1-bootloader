@@ -1,16 +1,25 @@
-# Project
+# Information
 STM32 project for learning purposes.
 - UART driver
 - Bootloader
 
+## Hardware
+- STM32F103C8T6 board
+- st-link v2
+- USB to TTL serial cable
+
+## Software
+- stm32cubeIDE
+- stlink-gui
+- st-flash
+- cutecom
+
 # MCU information
 STM32F103C8T6 ARM cortex-m3
-
-## General
 ```
 Flash: 128kB
 RAM  : 20kB
-HCLK : 76MHz
+HCLK : 76MHz High Speed External crystal oscillator
 ```
 
 ## Memory
@@ -52,7 +61,7 @@ stlink-gui
 st-flash erase
 ```
 
-## Boot
+# Bootloader
 At startup, boot pins are used to select one of three boot options:
 - Boot from User Flash (BOOT1 == X && BOOT0 == 0)
 - Boot from System Memory (BOOT1 == 0 && BOOT0 == 1)
@@ -61,22 +70,6 @@ At startup, boot pins are used to select one of three boot options:
 The ST bootloader is located in System Memory. It is used to reprogram the Flash memory by using USART1.
 
 Custom bootloader is located at the start of the flash memory.
-
-# Tools
-## Software
-- stm32cubeIDE
-- stlink-gui
-- st-flash
-- cutecom
-
-## Hardware
-- stm32f103c8t6 board
-- st-link v2
-- USB to TTL serial cable
-
-# Clock
-- HCLCK increased to maximum of 76MHz.
-- Use the HSE (High Speed External) crystal oscillator.
 
 # UART
 The board simply echoes a 16 byte message received from its UART RX to its UART TX.
