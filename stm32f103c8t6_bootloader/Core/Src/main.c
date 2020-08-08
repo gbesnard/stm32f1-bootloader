@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "uart_driver.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,11 +55,29 @@ static void MX_GPIO_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t check_firmware_update() {
-	return 0;
+static uint8_t check_firmware_update() {
+	uint8_t byte_read = 0u;
+	uart_driver_status_t uart_driver_status;
+
+	while (1u) {
+		uart_driver_status = uart_driver_read(&byte_read);
+
+		if(uart_driver_status == UART_DRIVER_NO_DATA_AVAILABLE) {
+			continue;
+		}
+		else if(uart_driver_status == UART_DRIVER_ERROR) {
+			Error_Handler();
+		}
+		else if(uart_driver_status == UART_DRIVER_OK) {
+			// For now, only echo read data.
+			// TODO: Write the firmware to FLASH.
+			// uart_driver_write(&byte_read, sizeof(byte_read));
+		}
+	}
+	return 0u;
 }
 
-void firmware_update() {
+static void firmware_update() {
 	return;
 }
 /* USER CODE END 0 */
@@ -80,6 +98,7 @@ int boot_main(void) {
 	HAL_Init();
 
 	/* USER CODE BEGIN Init */
+	uart_driver_init();
 
 	/* USER CODE END Init */
 
@@ -169,7 +188,6 @@ static void MX_GPIO_Init(void) {
 	/* GPIO Ports Clock Enable */
 	__HAL_RCC_GPIOD_CLK_ENABLE();
 	__HAL_RCC_GPIOA_CLK_ENABLE();
-
 }
 
 /* USER CODE BEGIN 4 */
@@ -183,7 +201,7 @@ static void MX_GPIO_Init(void) {
 void Error_Handler(void) {
 	/* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
-
+	while(1);
 	/* USER CODE END Error_Handler_Debug */
 }
 
