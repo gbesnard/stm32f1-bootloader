@@ -20,6 +20,7 @@ typedef enum uart_driver_status {
 uart_driver_status_t uart_driver_init();
 uart_driver_status_t uart_driver_read(uint8_t *byte);
 uart_driver_status_t uart_driver_write(uint8_t *p_data, uint8_t length);
+uint8_t uart_driver_data_available(void);
 
 // Driver ISR function.
 void uart_driver_rx_isr();

@@ -37,7 +37,7 @@ typedef void (*p_function)(void);
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define APPLICATION_ADDRESS 0x08004000
+#define APPLICATION_START_ADDRESS 0x08004000
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -50,37 +50,120 @@ typedef void (*p_function)(void);
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
-
+static uint8_t check_firmware_update(void);
+static void flash_application_erase(void);
+static void firmware_update(void);
+static void app_branch(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static uint8_t check_firmware_update() {
-	uint8_t byte_read = 0u;
-	uart_driver_status_t uart_driver_status;
 
-	while (1u) {
-		uart_driver_status = uart_driver_read(&byte_read);
+/**
+ * @brief This function check if update possible (ie, data available on UART).
+ */
+static uint8_t check_firmware_update(void) {
+	uint32_t wait_delay = 37000000u; // TODO: magic number, corresponding approximately to 30 secs.
+	uint8_t res = 0u;
+	uint8_t dummy_byte;
 
-		if(uart_driver_status == UART_DRIVER_NO_DATA_AVAILABLE) {
-			continue;
-		}
-		else if(uart_driver_status == UART_DRIVER_ERROR) {
-			Error_Handler();
-		}
-		else if(uart_driver_status == UART_DRIVER_OK) {
-			// For now, only echo read data.
-			// TODO: Write the firmware to FLASH.
-			// uart_driver_write(&byte_read, sizeof(byte_read));
+	 // Ready to receive update, switch on the LED.
+	 HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+	// Wait a while for an update to become available, and if not, proceed to application jump.
+	while (wait_delay != 0u && res == 0u)	{
+		wait_delay--;
+
+		// check if a dummy char is received to signal an update event.
+		if (uart_driver_data_available() == 1u) {
+			// Read and discard the dummy char received.
+			(void)uart_driver_read(&dummy_byte);
+
+			 res = 1u;
 		}
 	}
-	return 0u;
+
+	return res;
 }
 
-static void firmware_update() {
-	return;
+/**
+ * @brief This function erase the flash applicative area.
+ */
+static void flash_application_erase(void) {
+	FLASH_EraseInitTypeDef erase_init_struct;
+	uint32_t sector_error = 0u;
+
+	// Prepare application flash erase.
+	erase_init_struct.TypeErase = FLASH_TYPEERASE_PAGES;
+	erase_init_struct.PageAddress = APPLICATION_START_ADDRESS;
+
+	// Compute number of pages to erase.
+	erase_init_struct.NbPages = (FLASH_BANK1_END - APPLICATION_START_ADDRESS)
+			/ FLASH_PAGE_SIZE;
+
+	// Switch off the LED while erasing the flash.
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+
+	// Perform flash erase.
+	if (HAL_FLASHEx_Erase(&erase_init_struct, &sector_error) != HAL_OK)
+		Error_Handler();
+
+	// Switch the LED back on once flash erase is done.
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 }
-/* USER CODE END 0 */
+/**
+ * @brief This function update the firmware by writing to flash the received data from UART.
+ * TODO: Sanitize uart input and check for firmware version.
+ */
+static void firmware_update(void) {
+	uint8_t byte_read = 0u;
+	uint64_t data = 0u;
+	uint32_t n_data = 0u;
+	uart_driver_status_t uart_driver_status;
+	uint32_t flash_addr = APPLICATION_START_ADDRESS;
+	uint32_t rx_delay = 16000000u; // TODO: magic number, corresponding to approximately 30 secs.
+
+	// Update until rx_delay is over.
+	while (rx_delay != 0u) {
+		uart_driver_status = uart_driver_read(&byte_read);
+
+		if (uart_driver_status == UART_DRIVER_NO_DATA_AVAILABLE) {
+			rx_delay--;
+			continue;
+		} else if (uart_driver_status == UART_DRIVER_ERROR) {
+			return Error_Handler();
+		} else if (uart_driver_status == UART_DRIVER_OK) {
+			// Switch off the LED while flashing.
+			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+
+			// Update is not over, reset rx_delay.
+			rx_delay = 100000u; // TODO: magic number
+
+			data |= ((uint64_t)byte_read << ((n_data) * 8u));
+			if (n_data++ == (sizeof(data) - 1u)) {
+				n_data = 0u;
+				// Write the firmware to FLASH.
+				if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, flash_addr, data) != HAL_OK) {
+					Error_Handler();
+				}
+
+				// Increment address and reset data for next write.
+				data = 0u;
+				flash_addr += sizeof(data);
+			}
+		}
+	}
+
+	// Handle last doubleword write if it wasn't complete.
+	if (n_data != 0u) {
+		if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, flash_addr, data) != HAL_OK) {
+			Error_Handler();
+		}
+	}
+
+	// Switch on the LED once flashing is done.
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+}
 
 /**
  * @brief  The application entry point.
@@ -88,8 +171,6 @@ static void firmware_update() {
  */
 int boot_main(void) {
 	/* USER CODE BEGIN 1 */
-	p_function app_entry;
- 	uint32_t app_stack;
 	/* USER CODE END 1 */
 
 	/* MCU Configuration--------------------------------------------------------*/
@@ -109,40 +190,74 @@ int boot_main(void) {
 
 	/* USER CODE END SysInit */
 
-	/* Initialize all configured peripherals */
+	// Initialize all configured peripherals.
 	MX_GPIO_Init();
 
 	/* USER CODE BEGIN 2 */
-	if (check_firmware_update()) {
+
+	// Update firmware if data available on UART.
+	if (check_firmware_update() == 1u) {
+		// Unlock flash.
+		if (HAL_FLASH_Unlock() != HAL_OK) Error_Handler();
+
+		// Erase applicative area and then write the firmware into flash.
+		flash_application_erase();
 		firmware_update();
+
+		// Lock flash.
+		if (HAL_FLASH_Lock() != HAL_OK) Error_Handler();
 	}
 
-	/* Get the application stack pointer (first entry in the application vector table) */
-	app_stack = (uint32_t) *((__IO uint32_t*)APPLICATION_ADDRESS);
+	// Jump to application.
+	app_branch();
 
-	/* Get the application entry point (second entry in the application vector table) */
-	app_entry = (p_function) *(__IO uint32_t*) (APPLICATION_ADDRESS + 4);
+	// Return statement never reached.
+	return 0u;
+}
 
-	/* Reconfigure vector table offset register to match the application location */
-	SCB->VTOR = APPLICATION_ADDRESS;
+/*
+ * @brief Jump to main application.
+ */
+static void app_branch(void) {
+	p_function app_entry;
+ 	uint32_t app_stack;
 
-	/* Set the application stack pointer */
+ 	// Copy paste of system init function, as this will be bypassed by the direct branching to main. */
+
+	// Set HSION bit.
+	RCC->CR |= 0x00000001U;
+
+	// Reset SW, HPRE, PPRE1, PPRE2, ADCPRE and MCO bits.
+	RCC->CFGR &= 0xF8FF0000U;
+
+	// Reset HSEON, CSSON and PLLON bits.
+	RCC->CR &= 0xFEF6FFFFU;
+
+	// Reset HSEBYP bit.
+	RCC->CR &= 0xFFFBFFFFU;
+
+	// Reset PLLSRC, PLLXTPRE, PLLMUL and USBPRE/OTGFSPRE bits.
+	RCC->CFGR &= 0xFF80FFFFU;
+
+	// Disable all interrupts and clear pending bits.
+	RCC->CIR = 0x009F0000U;
+
+	// Get the application stack pointer (first entry in the application vector table).
+	app_stack = (uint32_t) *((__IO uint32_t*)APPLICATION_START_ADDRESS);
+
+	// Get the application entry point (second entry in the application vector table).
+	app_entry = (p_function) *(__IO uint32_t*) (APPLICATION_START_ADDRESS + 4u);
+
+	// Reconfigure vector table offset register to match the application location.
+	SCB->VTOR = APPLICATION_START_ADDRESS;
+
+	// Set the application stack pointer.
 	__set_MSP(app_stack);
 
-	/* Start the application */
+	// Start the application.
 	app_entry();
-
-	/* USER CODE END 2 */
-
-	/* Infinite loop */
-	/* USER CODE BEGIN WHILE */
-	while (1) {
-		/* USER CODE END WHILE */
-
-		/* USER CODE BEGIN 3 */
-	}
-	/* USER CODE END 3 */
 }
+/* USER CODE END 0 */
 
 /**
  * @brief System Clock Configuration
@@ -179,15 +294,29 @@ void SystemClock_Config(void) {
 }
 
 /**
- * @brief GPIO Initialization Function
- * @param None
- * @retval None
- */
-static void MX_GPIO_Init(void) {
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-	/* GPIO Ports Clock Enable */
-	__HAL_RCC_GPIOD_CLK_ENABLE();
-	__HAL_RCC_GPIOA_CLK_ENABLE();
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
 }
 
 /* USER CODE BEGIN 4 */

@@ -8,7 +8,7 @@
 #include "main.h"
 #include "uart_driver.h"
 
-#define BUFFER_RX_SIZE  256u
+#define BUFFER_RX_SIZE  1024u
 
 typedef enum buffer_status {
 	BUFFER_OK,
@@ -39,11 +39,9 @@ uart_driver_status_t uart_driver_init() {
 	uart_driver_status_t uart_driver_status;
 
 	// Init low level hardware resources.
-	RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;   // Enable clock for GPIOA
-	RCC->APB2ENR |= RCC_APB2ENR_USART1EN; // Enable clock for USART1
+	RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;   			// Enable clock for GPIOA
+	RCC->APB2ENR |= RCC_APB2ENR_USART1EN; 		// Enable clock for USART1
 
-	// TODO: remove HAL usage, init gpio following this link
-	// http://www.micromouseonline.com/2009/12/31/stm32-usart-basics/
     GPIO_InitStruct.Pin = GPIO_PIN_9;				// PA9 ------> USART1_TX
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
@@ -54,18 +52,18 @@ uart_driver_status_t uart_driver_init() {
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* TODO USART1 interrupt Init */
+    //  USART1 interrupt Init.
     HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
 
-	USART1->CR1 |= USART_CR1_UE;		// USART enabled.
-	USART1->CR1 &= ~USART_CR1_M;		// 1 Start bit, 8 Data bits, n Stop bit.
+	USART1->CR1 |= USART_CR1_UE;					// USART enabled.
+	USART1->CR1 &= ~USART_CR1_M;				// 1 Start bit, 8 Data bits, n Stop bit.
 	USART1->CR2 &= ~USART_CR2_STOP_0;	// 1 Stop bit.
 	USART1->CR2 &= ~USART_CR2_STOP_1;
-	USART1->BRR = pclk2/baud_rate;		// USART1 is clocked with PCLK2 (72MHz).
-  	USART1->CR1 |= USART_CR1_TE;		// tx is enabled.
-  	USART1->CR1 |= USART_CR1_RE;		// rx is enabled.
-  	USART1->CR1 |= USART_CR1_RXNEIE;	// rx interrupt is enabled.
+	USART1->BRR = pclk2/baud_rate;					// USART1 is clocked with PCLK2 (72MHz).
+  	USART1->CR1 |= USART_CR1_TE;					// tx is enabled.
+  	USART1->CR1 |= USART_CR1_RE;					// rx is enabled.
+  	USART1->CR1 |= USART_CR1_RXNEIE;			// rx interrupt is enabled.
 
   	// TODO: handles error cases.
 	uart_driver_status = UART_DRIVER_OK;
@@ -99,7 +97,6 @@ uart_driver_status_t uart_driver_write(uint8_t *p_data, uint8_t length) {
 
 /**
 * @brief Read one byte from uart if available.
-* TODO: read more than one byte at a time.
 */
 uart_driver_status_t uart_driver_read(uint8_t *byte) {
 	buffer_status_t buf_status;
@@ -121,6 +118,12 @@ uart_driver_status_t uart_driver_read(uint8_t *byte) {
 	return uart_driver_status;
 }
 
+/**
+ * @brief return 1 if uart rx data available, 0 otherwise.
+ */
+uint8_t uart_driver_data_available(void) {
+	return (buff_rx.write_index == buff_rx.read_index) ? 0u : 1u;
+}
 /**
 * @brief Receive data Interrupt Service Routine.
 */
